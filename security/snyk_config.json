@@ -1,0 +1,7 @@
+{
+    "snyk": {
+      "project": "flask-app",
+      "scan": "all"
+    }
+  }
+  

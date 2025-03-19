@@ -1,0 +1,15 @@
+создание админа через консоль: 
+
+## db.session.rollback()
+## from werkzeug.security import generate_password_hash
+## admin = User(username='admin', email='admin@example.com', password=generate_password_hash('adminpassword'), role='admin')
+## db.session.add(admin)
+## db.session.commit()
+
+запуск: 
+
+python3 -m venv venv
+
+source venv/bin/activate
+
+pip install -r requirements.txt

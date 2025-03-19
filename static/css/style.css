@@ -1,0 +1,68 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+}
+
+.notes-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.note {
+    background-color: #fff8dc; /* Цвет бумаги */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    width: 250px;
+    margin: 20px;
+    position: relative;
+    transform: rotate(-2deg);
+    transition: transform 0.2s;
+}
+
+.note:hover {
+    transform: rotate(0deg) scale(1.05);
+}
+
+.note h3 {
+    margin-top: 0;
+    font-size: 1.2em;
+}
+
+.note p {
+    font-size: 1em;
+}
+
+.category {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #555;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ffeb3b;
+    padding: 5px 10px;
+    border-radius: 5px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.note::after {
+    content: "";
+    width: 100%;
+    height: 10px;
+    background: rgba(0, 0, 0, 0.1);
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    border-radius: 50%;
+    transform: scaleX(0.9);
+}
