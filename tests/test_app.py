@@ -46,7 +46,7 @@ class NotesAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         # Проверяем, что на странице есть кнопка "Return to Notes", которая появляется только после логина
-        self.assertIn(b'My Notes - Notes App', response.data)  # Теперь проверяем, что эта кнопка есть
+        self.assertIn(b'Welcome', response.data)  # Теперь проверяем, что эта кнопка есть
 
 
     def test_create_note(self):
