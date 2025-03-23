@@ -1,39 +1,64 @@
-name: Deploy Flask App
+name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [dev]
   pull_request:
-    branches:
-      - main
+    branches: [dev]
+
+env:
+  DB_PATH: "/home/test/DevOps/instance/site.db"
 
 jobs:
-  deploy:
+  security-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      
+      - name: SQL Security Check
+        run: |
+          pip install sqlfluff
+          sqlfluff lint migrations/versions/ --dialect sqlite
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+  deploy-stage:
+    runs-on: ubuntu-latest
+    needs: security-check
+    environment: stage
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.7.0
         with:
-          python-version: '3.10'
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Install dependencies
+      - name: Compare DB schemas
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          ssh -o StrictHostKeyChecking=no ${{ secrets.TEST_USER }}@${{ secrets.TEST_SERVER }} "sqlite3 ${{ env.DB_PATH }} '.schema'" > test_schema.sql
+          ssh -o StrictHostKeyChecking=no ${{ secrets.STAGE_USER }}@${{ secrets.STAGE_SERVER }} "sqlite3 ${{ env.DB_PATH }} '.schema'" > stage_schema.sql
+          diff test_schema.sql stage_schema.sql || exit 1
 
-      - name: Run tests
+      - name: Deploy to Stage
         run: |
-          pytest
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" ./ ${{ secrets.STAGE_USER }}@${{ secrets.STAGE_SERVER }}:/home/test/DevOps/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.STAGE_USER }}@${{ secrets.STAGE_SERVER }} "cd /home/test/DevOps && alembic upgrade head"
 
-      - name: Build Docker image
+  deploy-prod:
+    runs-on: ubuntu-latest
+    needs: deploy-stage
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Manual Approval
+        uses: trstringer/manual-approval@v1
+
+      - name: Deploy to Prod
         run: |
-          docker build -t flask-app .
-
-      - name: Deploy to server
-        run: |
-          docker run -d -p 5000:5000 flask-app
-
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" ./ ${{ secrets.PROD_USER }}@${{ secrets.PROD_SERVER }}:/home/test/DevOps/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.PROD_USER }}@${{ secrets.PROD_SERVER }} "cd /home/test/DevOps && alembic upgrade head"

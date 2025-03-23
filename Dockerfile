@@ -1,6 +1,9 @@
 # Используем официальный образ Python
 FROM python:3.9-slim
 
+RUN apt-get update && apt-get install -y sqlite3
+
+
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
