@@ -2,16 +2,12 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - dev
+    branches: [dev]
   pull_request:
-    branches:
-      - dev
+    branches: [dev]
 
 env:
-  DB_PATH: "instance/site.db"
-  STAGE_SERVER: "172.20.10.7"
-  PROD_SERVER: "172.20.10.3"
+  DB_PATH: "/home/test/DevOps/instance/site.db"
 
 jobs:
   security-check:
@@ -24,43 +20,28 @@ jobs:
           pip install sqlfluff
           sqlfluff lint migrations/versions/ --dialect sqlite
 
-  migrations:
-    runs-on: ubuntu-latest
-    needs: security-check
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install alembic
-
-      - name: Run migrations
-        run: |
-          alembic upgrade head
-
   deploy-stage:
     runs-on: ubuntu-latest
-    needs: [security-check, migrations]
+    needs: security-check
     environment: stage
     steps:
       - uses: actions/checkout@v4
       
-      - name: Compare schemas
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Compare DB schemas
         run: |
-          ssh test@172.20.10.6 "sqlite3 /path/to/test.db .schema" > test_schema.sql
-          ssh stage@172.20.10.7 "sqlite3 /path/to/stage.db .schema" > stage_schema.sql
+          ssh -o StrictHostKeyChecking=no ${{ secrets.TEST_USER }}@${{ secrets.TEST_SERVER }} "sqlite3 ${{ env.DB_PATH }} '.schema'" > test_schema.sql
+          ssh -o StrictHostKeyChecking=no ${{ secrets.STAGE_USER }}@${{ secrets.STAGE_SERVER }} "sqlite3 ${{ env.DB_PATH }} '.schema'" > stage_schema.sql
           diff test_schema.sql stage_schema.sql || exit 1
 
-      - name: Apply to Stage
+      - name: Deploy to Stage
         run: |
-          scp -r . stage@${{ env.STAGE_SERVER }}:/app
-          ssh stage@${{ env.STAGE_SERVER }} "cd /app && alembic upgrade head"
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" ./ ${{ secrets.STAGE_USER }}@${{ secrets.STAGE_SERVER }}:/home/test/DevOps/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.STAGE_USER }}@${{ secrets.STAGE_SERVER }} "cd /home/test/DevOps && alembic upgrade head"
 
   deploy-prod:
     runs-on: ubuntu-latest
@@ -69,10 +50,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
       - name: Manual Approval
         uses: trstringer/manual-approval@v1
 
       - name: Deploy to Prod
         run: |
-          scp -r . prod@${{ env.PROD_SERVER }}:/app
-          ssh prod@${{ env.PROD_SERVER }} "cd /app && alembic upgrade head"
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" ./ ${{ secrets.PROD_USER }}@${{ secrets.PROD_SERVER }}:/home/test/DevOps/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.PROD_USER }}@${{ secrets.PROD_SERVER }} "cd /home/test/DevOps && alembic upgrade head"
