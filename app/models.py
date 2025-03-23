@@ -2,6 +2,9 @@ from flask_login import UserMixin
 from app.extensions import db
 from datetime import datetime
 
+# Явное объявление Base
+
+
 shared_notes = db.Table('shared_notes',
     db.Column('note_id', db.Integer, db.ForeignKey('note.id'), primary_key=True),
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
