@@ -53,14 +53,14 @@ jobs:
       
       - name: Compare schemas
         run: |
-          ssh user@172.20.10.6 "sqlite3 /path/to/test.db .schema" > test_schema.sql
-          ssh user@172.20.10.7 "sqlite3 /path/to/stage.db .schema" > stage_schema.sql
+          ssh test@172.20.10.6 "sqlite3 /path/to/test.db .schema" > test_schema.sql
+          ssh stage@172.20.10.7 "sqlite3 /path/to/stage.db .schema" > stage_schema.sql
           diff test_schema.sql stage_schema.sql || exit 1
 
       - name: Apply to Stage
         run: |
-          scp -r . user@${{ env.STAGE_SERVER }}:/app
-          ssh user@${{ env.STAGE_SERVER }} "cd /app && alembic upgrade head"
+          scp -r . stage@${{ env.STAGE_SERVER }}:/app
+          ssh stage@${{ env.STAGE_SERVER }} "cd /app && alembic upgrade head"
 
   deploy-prod:
     runs-on: ubuntu-latest
@@ -74,5 +74,5 @@ jobs:
 
       - name: Deploy to Prod
         run: |
-          scp -r . user@${{ env.PROD_SERVER }}:/app
-          ssh user@${{ env.PROD_SERVER }} "cd /app && alembic upgrade head"
+          scp -r . prod@${{ env.PROD_SERVER }}:/app
+          ssh prod@${{ env.PROD_SERVER }} "cd /app && alembic upgrade head"
