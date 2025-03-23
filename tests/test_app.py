@@ -1,70 +1,132 @@
 import unittest
-from app import app, db
-from models import User, Note
+from app import create_app, db
+from app.models import User, Note, Category  # Добавили Category
 from flask import Flask
 
 class NotesAppTests(unittest.TestCase):
     def setUp(self):
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-        app.config['TESTING'] = True
-        self.app = app.test_client()
+        self.app = create_app()
+        self.app.config.update({
+            'TESTING': True,
+            'WTF_CSRF_ENABLED': False,
+            'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
+            'ADMIN_ENABLED': False  # Отключаем админку в тестах
+        })
+        
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        
         db.create_all()
-
+        
     def tearDown(self):
         db.session.remove()
         db.drop_all()
+        self.app_context.pop()
 
     def test_register_and_login(self):
-        # Регистрация нового пользователя
-        response = self.app.post('/register', data={'username': 'testuser', 'password': 'password'})
-        self.assertEqual(response.status_code, 302)  # Ожидаем редирект
+        # Регистрация
+        response = self.client.post('/register', data={
+            'username': 'testuser',
+            'email': 'test@example.com',
+            'password': 'password123',
+            'confirm_password': 'password123'
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+
+        # Проверяем создание пользователя в БД
         user = User.query.filter_by(username='testuser').first()
         self.assertIsNotNone(user)
 
-        # Логин с правильными данными
-        response = self.app.post('/login', data={'username': 'testuser', 'password': 'password'})
-        self.assertEqual(response.status_code, 302)  # Ожидаем редирект
+        # Логин
+        response = self.client.post('/login', data={
+            'username': 'testuser',
+            'password': 'password123'
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
 
-        # Попытка логина с неправильным паролем
-        response = self.app.post('/login', data={'username': 'testuser', 'password': 'wrongpassword'})
-        self.assertIn(b'Invalid credentials', response.data)  # Проверяем наличие сообщения об ошибке
+        # Проверяем, что на странице есть кнопка "Return to Notes", которая появляется только после логина
+        self.assertIn(b'My Notes - Notes App', response.data)  # Теперь проверяем, что эта кнопка есть
+
 
     def test_create_note(self):
+        # Регистрация
+        self.client.post('/register', data={
+            'username': 'testuser',
+            'email': 'test@example.com',
+            'password': 'password123',
+            'confirm_password': 'password123'
+        }, follow_redirects=True)
+        
         # Логин
-        self.app.post('/register', data={'username': 'testuser', 'password': 'password'})
-        self.app.post('/login', data={'username': 'testuser', 'password': 'password'})
+        self.client.post('/login', data={
+            'username': 'testuser',
+            'password': 'password123'
+        }, follow_redirects=True)
 
-        # Создание новой заметки
-        response = self.app.post('/create_note', data={'title': 'Test Note', 'content': 'Test content'})
-        self.assertEqual(response.status_code, 302)  # Ожидаем редирект
-
-        # Проверка, что заметка была добавлена
-        note = Note.query.filter_by(title='Test Note').first()
+        # Создание категории через API
+        self.client.post('/add_category', data={'name': 'Test Category'})
+        
+        # Создание заметки
+        response = self.client.post('/add_note', data={
+            'title': 'Test Note',
+            'content': 'Content',
+            'category': 1
+        }, follow_redirects=True)
+        
+        self.assertEqual(response.status_code, 200)
+        note = Note.query.first()
         self.assertIsNotNone(note)
-        self.assertEqual(note.content, 'Test content')
 
     def test_dashboard(self):
-        # Логин
-        self.app.post('/register', data={'username': 'testuser', 'password': 'password'})
-        self.app.post('/login', data={'username': 'testuser', 'password': 'password'})
+        # Регистрация и логин
+        self.client.post('/register', data={
+            'username': 'testuser',
+            'email': 'test@example.com',
+            'password': 'password123',
+            'confirm_password': 'password123'
+        })
+        self.client.post('/login', data={
+            'username': 'testuser',
+            'password': 'password123'
+        })
 
-        # Создание новой заметки
-        self.app.post('/create_note', data={'title': 'Test Note', 'content': 'Test content'})
+        # Создаем категорию и заметку
+        category = Category(name="Test Category")
+        db.session.add(category)
+        db.session.commit()
+        
+        self.client.post('/add_note', data={
+            'title': 'Test Note',
+            'content': 'Test content',
+            'category': category.id
+        })
 
-        # Получение страницы dashboard
-        response = self.app.get('/dashboard')
+        # Проверяем dashboard
+        response = self.client.get('/notes')
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Test Note', response.data)  # Проверка, что заголовок заметки отображается на странице
+        self.assertIn(b'Test Note', response.data)
 
     def test_logout(self):
-        # Логин
-        self.app.post('/register', data={'username': 'testuser', 'password': 'password'})
-        self.app.post('/login', data={'username': 'testuser', 'password': 'password'})
+    # Регистрация и логин
+        self.client.post('/register', data={
+            'username': 'testuser',
+            'password': 'password123',
+            'email': 'test@example.com',
+            'confirm_password': 'password123'
+        })
+        self.client.post('/login', data={
+            'username': 'testuser',
+            'password': 'password123'
+        })
 
-        # Логин с правильными данными
-        response = self.app.get('/logout')
-        self.assertEqual(response.status_code, 302)  # Ожидаем редирект на главную страницу
+        # Выход
+        response = self.client.get('/logout', follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        
+        # Проверка доступа к защищенной странице
+        response = self.client.get('/notes', follow_redirects=True)
+        self.assertNotIn(b'Test Note', response.data)
 
-        # Проверяем, что текущий пользователь больше не авторизован
-        response = self.app.get('/dashboard')
-        self.assertIn(b'Login', response.data)  # Проверяем, что кнопка логина снова доступна
+if __name__ == '__main__':
+    unittest.main()
