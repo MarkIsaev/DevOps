@@ -1,9 +1,0 @@
-{
-    "bandit": {
-      "target": "app.py",
-      "exclude": "tests/",
-      "severity": "HIGH",
-      "confidence": "HIGH"
-    }
-  }
-  
