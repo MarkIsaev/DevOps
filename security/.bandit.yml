@@ -1,16 +1,19 @@
+# security/.bandit.yml
+targets:
+  - app/
+  - tests/
+
 skips:
-  - B104  # Пример: игнорировать проверку на hardcoded пароли
+  - B104  # Игнорировать hardcoded пароли
   - B602  # Игнорировать subprocess без shell=True
 
 severity:
   - low
   - medium
-  # high - исключить, чтобы Bandit не падал на High-проблемах
 
 confidence:
   - low
   - medium
-  # high - исключить, если хотите игнорировать высокодостоверные проблемы
 
 aggregate:
   file: true
