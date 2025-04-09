@@ -1,6 +1,9 @@
 # security/.bandit.yml
 targets:
   - app/
+  
+exclude:
+  - venv/  # Исключить виртуальное окружение
   - tests/
 
 skips:
