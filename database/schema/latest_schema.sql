@@ -28,13 +28,13 @@ CREATE TABLE note (
     category_id integer,
     PRIMARY KEY (id),
     FOREIGN KEY (user_id) REFERENCES "user" (id),
-    FOREIGN KEY (category_id) REFERENCES "category" (id)
+    FOREIGN KEY (category_id) REFERENCES category (id)
 );
 
 CREATE TABLE shared_notes (
     note_id integer NOT NULL,
     user_id integer NOT NULL,
     PRIMARY KEY (note_id, user_id),
-    FOREIGN KEY (note_id) REFERENCES "note" (id),
+    FOREIGN KEY (note_id) REFERENCES note (id),
     FOREIGN KEY (user_id) REFERENCES "user" (id)
 );
