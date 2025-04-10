@@ -10,7 +10,7 @@ CREATE TABLE "user" (
     UNIQUE (email)
 );
 
-CREATE TABLE "category" (
+CREATE TABLE category (
     id integer NOT NULL,
     name varchar(100) NOT NULL,
     user_id integer,
@@ -19,7 +19,7 @@ CREATE TABLE "category" (
     FOREIGN KEY (user_id) REFERENCES "user" (id)
 );
 
-CREATE TABLE "note" (
+CREATE TABLE note (
     id integer NOT NULL,
     title varchar(200) NOT NULL,
     content text NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE "note" (
     FOREIGN KEY (category_id) REFERENCES "category" (id)
 );
 
-CREATE TABLE "shared_notes" (
+CREATE TABLE shared_notes (
     note_id integer NOT NULL,
     user_id integer NOT NULL,
     PRIMARY KEY (note_id, user_id),
