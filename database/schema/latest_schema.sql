@@ -4,7 +4,7 @@ CREATE TABLE user (
 	email VARCHAR(150) NOT NULL, 
 	password VARCHAR(200) NOT NULL, 
 	role VARCHAR(50) NOT NULL, 
-	date_created DATETIME, 
+	date_created TIMESTAMP, 
 	PRIMARY KEY (id), 
 	UNIQUE (username), 
 	UNIQUE (email)
